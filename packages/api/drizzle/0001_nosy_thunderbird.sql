@@ -1,0 +1,1 @@
+ALTER TABLE `task_results` ADD `sort_order` integer DEFAULT 0 NOT NULL;

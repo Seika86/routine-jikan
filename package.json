@@ -1,0 +1,11 @@
+{
+  "name": "routine-jikan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ルーチン時間 — 時間になったら始められる＆始められたら既に終わっている",
+  "scripts": {
+    "dev": "docker compose up",
+    "dev:build": "docker compose up --build",
+    "down": "docker compose down"
+  }
+}

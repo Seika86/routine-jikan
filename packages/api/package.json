@@ -1,0 +1,27 @@
+{
+  "name": "@routine-jikan/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "@hono/node-server": "^1.14.0",
+    "drizzle-orm": "^0.44.0",
+    "@libsql/client": "^0.15.0",
+    "nanoid": "^5.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.31.0"
+  }
+}
