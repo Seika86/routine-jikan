@@ -21,6 +21,8 @@ services:
       - ./packages/web/src:/app/src
       - ./packages/web/vite.config.ts:/app/vite.config.ts
       - ./packages/shared:/app/shared
+    env_file:
+      - .env
     environment:
       - NODE_ENV=development
     init: true
