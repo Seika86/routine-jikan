@@ -53,8 +53,28 @@ let config: TTSConfig = loadConfig()
 let onSpeakStart: (() => void) | null = null
 let onSpeakEnd: (() => void) | null = null
 
-// 再生中のAudio要素
+// デバッグログコールバック（TimerPage の画面ログに出す）
+let debugLog: ((msg: string) => void) | null = null
+function log(msg: string) { debugLog?.(msg) }
+
+// 再生中のAudio要素（HTMLAudioElement フォールバック用）
 let currentAudio: HTMLAudioElement | null = null
+
+// TTS 再生用 AudioContext（モバイルでHTMLAudioElementより信頼性が高い）
+let ttsContext: AudioContext | null = null
+let currentSource: AudioBufferSourceNode | null = null
+
+function getTTSContext(): AudioContext | null {
+  if (ttsContext) return ttsContext
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    if (!Ctx) return null
+    ttsContext = new Ctx()
+    return ttsContext
+  } catch {
+    return null
+  }
+}
 
 export function setTTSConfig(newConfig: Partial<TTSConfig>) {
   config = { ...config, ...newConfig }
@@ -73,8 +93,8 @@ export function setDuckingCallbacks(start: () => void, end: () => void) {
 }
 
 export async function speak(text: string): Promise<void> {
-  if (!config.enabled) return
-
+  if (!config.enabled) { log(`speak skip (disabled): ${text}`); return }
+  log(`speak: "${text}" provider=${config.provider}`)
   if (config.provider === 'external') {
     return speakExternal(text)
   }
@@ -213,15 +233,17 @@ async function speakOpenAI(text: string): Promise<void> {
       }),
     })
 
+    log(`openai fetch: ${res.status}`)
     if (!res.ok) {
-      console.warn('OpenAI TTS failed, falling back to Web Speech API')
       onSpeakEnd?.()
       return speakWebSpeech(text)
     }
 
-    return playBlob(await res.blob())
-  } catch {
-    console.warn('OpenAI TTS unreachable, falling back to Web Speech API')
+    const blob = await res.blob()
+    log(`openai blob: ${blob.size}B ${blob.type}`)
+    return playBlob(blob)
+  } catch (e) {
+    log(`openai error: ${e}`)
     onSpeakEnd?.()
     return speakWebSpeech(text)
   }
@@ -230,15 +252,53 @@ async function speakOpenAI(text: string): Promise<void> {
 // --- ユーティリティ ---
 
 function cancelCurrentAudio() {
+  if (currentSource) {
+    try { currentSource.stop() } catch {}
+    currentSource = null
+  }
   if (currentAudio) {
     currentAudio.pause()
     currentAudio = null
   }
 }
 
-function playBlob(blob: Blob): Promise<void> {
+async function playBlob(blob: Blob): Promise<void> {
+  const ctx = getTTSContext()
+  if (ctx) {
+    try {
+      log(`playBlob ctx.state=${ctx.state}`)
+      if (ctx.state === 'suspended') {
+        await ctx.resume()
+        log(`playBlob after resume: ${ctx.state}`)
+      }
+      const arrayBuffer = await blob.arrayBuffer()
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
+      log(`playBlob decoded: ${audioBuffer.duration.toFixed(2)}s`)
+
+      return await new Promise<void>((resolve) => {
+        const source = ctx.createBufferSource()
+        source.buffer = audioBuffer
+        const gain = ctx.createGain()
+        gain.gain.value = config.volume
+        source.connect(gain).connect(ctx.destination)
+        source.onended = () => {
+          if (currentSource === source) currentSource = null
+          onSpeakEnd?.()
+          resolve()
+        }
+        currentSource = source
+        source.start(0)
+        log('playBlob: source started')
+      })
+    } catch (e) {
+      log(`playBlob AudioContext error: ${e}`)
+    }
+  }
+
+  log('playBlob fallback HTMLAudio')
   const url = URL.createObjectURL(blob)
   const audio = new Audio(url)
+  audio.volume = config.volume
   currentAudio = audio
 
   return new Promise((resolve) => {
@@ -249,12 +309,19 @@ function playBlob(blob: Blob): Promise<void> {
       resolve()
     }
     audio.onerror = () => {
+      log('HTMLAudio onerror')
       URL.revokeObjectURL(url)
       currentAudio = null
       onSpeakEnd?.()
       resolve()
     }
-    audio.play()
+    audio.play().catch((e) => {
+      log(`HTMLAudio play reject: ${e}`)
+      URL.revokeObjectURL(url)
+      currentAudio = null
+      onSpeakEnd?.()
+      resolve()
+    })
   })
 }
 
@@ -307,4 +374,54 @@ export function speakRemaining(sec: number) {
 export function getAvailableVoices(): SpeechSynthesisVoice[] {
   if (!window.speechSynthesis) return []
   return window.speechSynthesis.getVoices().filter((v) => v.lang.startsWith('ja'))
+}
+
+// --- 読み上げ閾値（TimerPage から参照） ---
+
+/** 残り時間読み上げの秒数しきい値（カウントダウン） */
+export const REMAINING_THRESHOLDS = [60, 30, 10] as const
+
+/** 超過時間読み上げの秒数しきい値（1分・5分・10分経過） */
+export const OVERTIME_THRESHOLDS = [60, 300, 600] as const
+
+/**
+ * モバイル自動再生制限の解除（要ユーザー操作コンテキスト）
+ * Start ボタン onClick から呼ばれる前提で、AudioContext を resume して
+ * 以降の programmatic な音声再生を許可する（iOS Safari / Chrome モバイル対策）
+ */
+export function unlock() {
+  const ctx = getTTSContext()
+  if (!ctx) { log('unlock: no AudioContext'); return }
+  log(`unlock: state=${ctx.state}`)
+  if (ctx.state === 'suspended') {
+    ctx.resume()
+      .then(() => log(`unlock resumed: state=${ctx.state}`))
+      .catch((e) => log(`unlock resume error: ${e}`))
+  }
+  try {
+    const buf = ctx.createBuffer(1, 1, 22050)
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.connect(ctx.destination)
+    src.start(0)
+    log('unlock: silent buffer started')
+  } catch (e) { log(`unlock silent buf error: ${e}`) }
+}
+
+/** デバッグログコールバックの登録 */
+export function setDebugLog(cb: (msg: string) => void) { debugLog = cb }
+
+/** AudioContext の suspend 対策（定期 ping、現状は resume のみ） */
+export function startKeepAlive() {
+  const ctx = getTTSContext()
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+}
+
+/** keep-alive の停止（互換スタブ） */
+export function stopKeepAlive() {}
+
+/** スリープ復帰時の AudioContext.resume */
+export function resumeContext() {
+  const ctx = getTTSContext()
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
 }
