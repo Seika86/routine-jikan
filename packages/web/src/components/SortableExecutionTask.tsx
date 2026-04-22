@@ -5,9 +5,10 @@ import type { TaskResult } from '../hooks/useApi'
 interface Props {
   task: TaskResult
   isCurrent: boolean
+  onPromote?: (taskId: string) => void
 }
 
-export function SortableExecutionTask({ task, isCurrent }: Props) {
+export function SortableExecutionTask({ task, isCurrent, onPromote }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     disabled: task.status !== 'pending',  // current task is also pending
@@ -54,6 +55,17 @@ export function SortableExecutionTask({ task, isCurrent }: Props) {
           <p className="text-xs text-text-dim truncate">{task.groupName}</p>
         )}
       </div>
+
+      {!isDone && !isCurrent && onPromote && (
+        <button
+          type="button"
+          onClick={() => onPromote(task.id)}
+          className="text-primary hover:opacity-80 active:opacity-60 shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-primary/10 touch-manipulation"
+          aria-label="このタスクを次に実行"
+        >
+          ▶
+        </button>
+      )}
 
       <span className="text-xs text-text-dim font-mono shrink-0">
         {formatDuration(task.plannedDurationSec)}

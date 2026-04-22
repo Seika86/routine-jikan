@@ -451,6 +451,36 @@ export function TimerPage({ startResult, onFinish }: Props) {
     await api.reorderExecution(startResult.executionId, reorderedPending.map(t => t.id))
   }
 
+  const handlePromoteTask = async (taskId: string) => {
+    if (!execution) return
+    const pendingTasks = execution.tasks.filter(t => t.status === 'pending')
+    const targetIndex = pendingTasks.findIndex(t => t.id === taskId)
+    if (targetIndex <= 0) return
+
+    const reorderedPending = arrayMove(pendingTasks, targetIndex, 0)
+    const doneTasks = execution.tasks.filter(t => t.status !== 'pending')
+    const newTasks = [...doneTasks, ...reorderedPending]
+    const newCurrentIndex = newTasks.findIndex(t => t.status === 'pending')
+    const newCurrentTask = newCurrentIndex >= 0 ? newTasks[newCurrentIndex] : null
+
+    if (newCurrentTask && newCurrentTask.id !== currentTask.id) {
+      timerStateRef.current = startTask(newCurrentTask.id)
+      prevTaskId.current = newCurrentTask.id
+      setElapsedSec(0)
+      lastSpokenRemaining.current = null
+      lastSpokenOvertime.current = null
+    }
+
+    setExecution({
+      ...execution,
+      tasks: newTasks,
+      currentTaskIndex: newCurrentIndex,
+      currentTask: newCurrentTask,
+    })
+
+    await api.reorderExecution(startResult.executionId, reorderedPending.map(t => t.id))
+  }
+
   const formatTimer = (sec: number) => {
     const abs = Math.abs(sec)
     const m = Math.floor(abs / 60)
@@ -519,6 +549,7 @@ export function TimerPage({ startResult, onFinish }: Props) {
                     key={task.id}
                     task={task}
                     isCurrent={task.id === currentTask.id}
+                    onPromote={handlePromoteTask}
                   />
                 ))}
             </SortableContext>

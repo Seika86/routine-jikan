@@ -1,0 +1,25 @@
+# routine-jikan 設計書依存グラフ (CoDD)
+#
+# 運用: 設計書を更新するとき:
+#   1. impact で下流を確認
+#      uv run --project ~/workspace/clawd/workspace/skills/codd \
+#        python ~/workspace/clawd/workspace/skills/codd/scripts/codd_scan.py impact \
+#        docs/codd/graph.yaml <node_id>
+#   2. bump でバージョン更新 (コピー→ヘッダー書換→変更履歴追記→graph.yaml更新)
+#      uv run --project ~/workspace/clawd/workspace/skills/codd \
+#        python ~/workspace/clawd/workspace/skills/codd/scripts/codd_scan.py bump \
+#        docs/codd/graph.yaml <node_id> "変更内容" --status "ステータス"
+
+nodes:
+  req:routine-jikan:
+    title: "要件定義書"
+    obsidian_path: "プロジェクト/routine-timer/要件定義書_v1.8.md"
+    wave: 1
+    depends_on: []
+
+  design:routine-jikan:
+    title: "設計書"
+    obsidian_path: "プロジェクト/routine-timer/設計書_v1.10.md"
+    wave: 2
+    depends_on:
+      - req:routine-jikan
