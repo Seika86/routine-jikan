@@ -139,6 +139,9 @@ export function TimerPage({ startResult, onFinish }: Props) {
         // 初回起動 or タスクが変わっている → 新規開始
         timerStateRef.current = startTask(state.currentTask.id)
         prevTaskId.current = state.currentTask.id
+        // 最初のタスク名を読み上げる（2タスク目以降は handleComplete/handleSkip の speakTaskEnd で
+        // 「○○終了！次は××」と次タスク名が読まれるが、最初のタスクだけ起点が無いのでここで補う）
+        tts.speakTaskStart(state.currentTask.taskName, state.currentTask.plannedDurationSec)
       }
 
       // 即座にelapsedを更新

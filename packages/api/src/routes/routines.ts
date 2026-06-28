@@ -110,7 +110,7 @@ app.put('/:id', async (c) => {
   return c.json(result)
 })
 
-// DELETE /api/routines/:id — 削除
+// DELETE /api/routines/:id — 削除（実行履歴は残し、履歴側の routineId は SET NULL される）
 app.delete('/:id', async (c) => {
   const { id } = c.req.param()
 

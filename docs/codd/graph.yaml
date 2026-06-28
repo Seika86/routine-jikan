@@ -19,7 +19,7 @@ nodes:
 
   design:routine-jikan:
     title: "設計書"
-    obsidian_path: "プロジェクト/routine-timer/設計書_v1.10.md"
+    obsidian_path: "プロジェクト/routine-timer/設計書_v1.11.md"
     wave: 2
     depends_on:
       - req:routine-jikan

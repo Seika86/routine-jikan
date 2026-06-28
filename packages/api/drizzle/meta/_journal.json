@@ -15,6 +15,13 @@
       "when": 1773870453506,
       "tag": "0001_nosy_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782656524466,
+      "tag": "0002_loud_retro_girl",
+      "breakpoints": true
     }
   ]
 }

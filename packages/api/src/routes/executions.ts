@@ -129,6 +129,10 @@ app.post('/routines/:id/start', async (c) => {
     })
   }
 
+  // 全タスクが auto-skipped (cost/day) で pending が 1 件も無いケースに備えて、
+  // start 直後にも完了判定を回す（complete/skip API のみで呼ぶと start から抜け出せなくなる）
+  await checkExecutionCompletion(execId)
+
   // レスポンス: 実行可能なタスクのみ返す
   const allResults = await db.select().from(schema.taskResults)
     .where(eq(schema.taskResults.executionId, execId))
@@ -159,9 +163,11 @@ app.get('/executions', async (c) => {
 
   const enriched = await Promise.all(
     executions.map(async (exec) => {
-      const routine = await db.select().from(schema.routines)
-        .where(eq(schema.routines.id, exec.routineId))
-        .get()
+      const routine = exec.routineId
+        ? await db.select().from(schema.routines)
+            .where(eq(schema.routines.id, exec.routineId))
+            .get()
+        : null
       const results = await db.select().from(schema.taskResults)
         .where(eq(schema.taskResults.executionId, exec.id))
         .all()
@@ -192,8 +198,10 @@ app.get('/executions/export', async (c) => {
 
   const rows: Array<Record<string, unknown>> = []
   for (const exec of executions) {
-    const routine = await db.select().from(schema.routines)
-      .where(eq(schema.routines.id, exec.routineId)).get()
+    const routine = exec.routineId
+      ? await db.select().from(schema.routines)
+          .where(eq(schema.routines.id, exec.routineId)).get()
+      : null
     const results = await db.select().from(schema.taskResults)
       .where(eq(schema.taskResults.executionId, exec.id)).all()
     for (const r of results) {
@@ -233,9 +241,11 @@ app.get('/executions/:id', async (c) => {
     .get()
   if (!execution) return c.json({ error: 'Execution not found' }, 404)
 
-  const routine = await db.select().from(schema.routines)
-    .where(eq(schema.routines.id, execution.routineId))
-    .get()
+  const routine = execution.routineId
+    ? await db.select().from(schema.routines)
+        .where(eq(schema.routines.id, execution.routineId))
+        .get()
+    : null
 
   const results = await db.select().from(schema.taskResults)
     .where(eq(schema.taskResults.executionId, id))

@@ -13,9 +13,11 @@ app.get('/', async (c) => {
   // ルーチン名と集計を付与
   const enriched = await Promise.all(
     executions.map(async (exec) => {
-      const routine = await db.select().from(schema.routines)
-        .where(eq(schema.routines.id, exec.routineId))
-        .get()
+      const routine = exec.routineId
+        ? await db.select().from(schema.routines)
+            .where(eq(schema.routines.id, exec.routineId))
+            .get()
+        : null
       const results = await db.select().from(schema.taskResults)
         .where(eq(schema.taskResults.executionId, exec.id))
         .all()
@@ -56,9 +58,11 @@ app.get('/export', async (c) => {
   // 全結果を収集
   const rows: ExportRow[] = []
   for (const exec of executions) {
-    const routine = await db.select().from(schema.routines)
-      .where(eq(schema.routines.id, exec.routineId))
-      .get()
+    const routine = exec.routineId
+      ? await db.select().from(schema.routines)
+          .where(eq(schema.routines.id, exec.routineId))
+          .get()
+      : null
     const results = await db.select().from(schema.taskResults)
       .where(eq(schema.taskResults.executionId, exec.id))
       .all()

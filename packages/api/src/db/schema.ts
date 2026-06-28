@@ -62,7 +62,8 @@ export const routineItems = sqliteTable('routine_items', {
 
 export const routineExecutions = sqliteTable('routine_executions', {
   id: text('id').primaryKey(),
-  routineId: text('routine_id').notNull().references(() => routines.id),
+  // routine 削除時は履歴を残しつつ参照だけ NULL に切る（HistoryPage で「(削除済み)」表示）
+  routineId: text('routine_id').references(() => routines.id, { onDelete: 'set null' }),
   costLevel: text('cost_level').notNull(), // low | medium | high
   startedAt: text('started_at').notNull(),
   completedAt: text('completed_at'),

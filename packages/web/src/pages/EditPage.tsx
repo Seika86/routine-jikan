@@ -46,6 +46,8 @@ export function EditPage({ routineId, onBack }: Props) {
   const [routineName, setRoutineName] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
   const [ambientSoundType, setAmbientSoundType] = useState<AmbientType>('none')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -119,6 +121,18 @@ export function EditPage({ routineId, onBack }: Props) {
     await refresh()
   }
 
+  const handleDeleteRoutine = async () => {
+    if (deleting) return
+    setDeleting(true)
+    try {
+      await api.deleteRoutine(routineId)
+      onBack()
+    } catch (e) {
+      setDeleting(false)
+      throw e
+    }
+  }
+
   const handleDeleteGroup = async (item: RoutineItemExpanded) => {
     await api.deleteRoutineItem(routineId, item.id)
     if (item.group && !item.group.isShared) {
@@ -169,9 +183,17 @@ export function EditPage({ routineId, onBack }: Props) {
                 ))}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button onClick={handleSaveRoutine} className="bg-primary text-white px-4 py-2 rounded-lg text-sm">保存</button>
               <button onClick={() => setEditingRoutine(false)} className="text-text-muted px-4 py-2 text-sm">キャンセル</button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="ml-auto text-text-dim hover:text-danger px-2 py-2 rounded-lg transition-colors"
+                aria-label="ルーチンを削除"
+                title="ルーチンを削除"
+              >
+                🗑️
+              </button>
             </div>
           </>
         ) : (
@@ -263,6 +285,34 @@ export function EditPage({ routineId, onBack }: Props) {
           }}
           onClose={() => setEditingGroup(null)}
         />
+      )}
+
+      {/* ルーチン削除確認ダイアログ */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-6" onClick={() => !deleting && setShowDeleteConfirm(false)}>
+          <div className="bg-surface rounded-xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold">ルーチンを削除しますか？</h3>
+            <p className="text-text-muted text-sm">
+              「{routine.name}」を削除します。タスク・グループの紐付けは消えますが、実行履歴は残ります（履歴上は「(削除済み)」と表示されます）。この操作は取り消せません。
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 bg-surface-light text-text font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDeleteRoutine}
+                disabled={deleting}
+                className="flex-1 bg-danger text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {deleting ? '削除中...' : '削除する'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* タスク編集モーダル */}
