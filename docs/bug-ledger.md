@@ -52,7 +52,7 @@
 | RJ-B14 | web | 並べ替え永続化の失敗が黙殺 — UI とサーバー順序が乖離 | TimerPage.tsx:454,484 ほか | bug-hunt B-17 | 未着手 |
 | RJ-B15 | web | 初期ロード失敗で全ページ無限「読み込み中...」（HistoryPage は素 fetch で r.ok 未確認） | TimerPage.tsx:124-153, HistoryPage.tsx:27-31 ほか | bug-hunt B-18, design B-7 | 未着手 |
 | RJ-B16 | web | コスト時間の秒成分が保存のたび切り捨て | TaskEditModal.tsx:28-29,42-43 | bug-hunt B-19 | 未着手 |
-| RJ-B17 | web | 並べ替えで現在タスクが変わると旧タスクの経過時間が無言で破棄【仕様か要判断】 | TimerPage.tsx:438-444,469-475 | bug-hunt B-20 | 未着手 |
+| RJ-B17 | web | 並べ替えで現在タスクが変わると旧タスクの経過時間が破棄される | TimerPage.tsx:438-444,469-475 | bug-hunt B-20 | 仕様化決定 (ADR-001)。README等への明文化のみ残 |
 | RJ-B18 | api | complete/skip が execution と taskResult の紐付けを検証せず、完了判定が別 execution に走る | executions.ts:271-311,387-393 | api B-1 | 未着手 |
 | RJ-B19 | api | 実行中 reorder が部分リスト許容 — sortOrder 重複で「現在のタスク」が非決定に | executions.ts:357-376 | api B-2 | 未着手 |
 | RJ-B20 | api | PUT routines/groups の mass assignment（id・createdAt 上書き可）【疑い】 | routines.ts:99-104, groups.ts:66-69 | api B-3 | 未着手 |

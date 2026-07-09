@@ -1,6 +1,6 @@
 # ADR-001: 製品版再設計の方向性
 
-- **Status:** Proposed（Seika レビュー待ち）
+- **Status:** Accepted（2026-07-09 Seika 承認、未決事項4件も同日決定）
 - **Date:** 2026-07-09
 - **出典:** 4班並列レビュー（[design-audit](../review/2026-07-09/design-audit.md) / [bug-hunt-web](../review/2026-07-09/bug-hunt-web.md) / [state-model](../review/2026-07-09/state-model.md) / [api-data](../review/2026-07-09/api-data.md)）。個別バグは [バグ台帳](../bug-ledger.md) 参照
 
@@ -61,7 +61,7 @@ web は Vite proxy で `/api` → `http://api:3001` を既に持っており、*
 
 未マウントの history.ts（125行、既に本体と実装ドリフト）、誰も継承しない tsconfig.base.json、タスク個別 TTS/環境音フィールド5本、`timerOverrun: 'auto-next'`（UI で設定可能だが実装ゼロ）、`itemType: 'task'`（登録できるが実行時に黙って無視）、ambient の `oscillatorNode`（代入箇所ゼロ）、未使用 export 5本。
 
-→ 全て削除。「実装した時に足す」（1in1out の精神）。特に itemType は group_ref 固定にするとデータモデルが一段単純になる。auto-next だけは削除ではなく**実装する**選択肢もある（Seika 判断、台帳 RJ-A01）。
+→ 全て削除。「実装した時に足す」（1in1out の精神）。特に itemType は group_ref 固定にするとデータモデルが一段単純になる。**例外: auto-next は削除ではなく実装する**（Seika 判断 2026-07-09。D2 の遷移一元化の後に、残り0到達で自動遷移を発火する形。台帳 RJ-A01）。
 （台帳: RJ-A01, RJ-B24, B-28, B-29 / 出典: design B-2, B-3 / api B-7 / state-model §7）
 
 ### D8. lockfile をコミットし、ビルドを再現可能にする
@@ -83,12 +83,12 @@ App のフックと TimerPage のインライン実装（ログ付き）が同�
 - **ambient.ts の狭い公開 API**: AudioContext 配線の隠蔽は維持（直すのは duck の中身だけ）
 - **読み上げの 3 useEffect 分割**（残り/0到達/超過）: 「別 useEffect で明示的に」の実践。直すのはリセット管理（D2）と一致判定（台帳 RJ-A02: `===` → 閾値跨ぎ検出）
 
-## 未決事項（Seika 判断待ち）
+## 未決だった事項の決定（2026-07-09 Seika 判断）
 
-1. **入力バリデーションの流儀** — 設計班は「shared に手書き型ガード数本」（依存ゼロ）、API班は「zod + @hono/zod-validator を shared スキーマで」（型=検証の単一定義化、D4 と相性良）を推奨。どちらも Simple の論拠がある。規模的にはどちらでも回る
-2. **auto-next の削除 or 実装**（RJ-A01）— 使いたい機能なら実装、不要なら UI ごと削除
-3. **並べ替えで現在タスクが変わった時、旧タスクの経過時間を破棄するのは仕様か**（RJ-B17）
-4. **エクスポート/履歴フィルタの日付境界**を JST 化する形（RJ-B25）— 朝ルーチンが CSV 上「前日」になる現状は直したい
+1. **入力バリデーション → zod + @hono/zod-validator を採用**。スキーマは shared に置き、`z.infer` で TS 型と実行時検証を単一定義から出す（D4 の status 単一定義と同じ「正はひとつ」原則。手書きガード案は型との二重メンテ = 今回最も刺さった「正が複数」構造の再生産になるため不採用）
+2. **auto-next は実装する**（D7 に反映済み。着手は D2 の後）
+3. **並べ替えで現在タスクが変わった時の旧タスク経過時間は「破棄」を仕様として明文化**（RJ-B17 はバグではなく仕様に確定。「割り込んだら前のタスクはやり直し」。履歴精度が必要になったらその時に退避・加算方式へ進化させる）
+4. **エクスポート/履歴フィルタの日付境界はサーバー側 Asia/Tokyo 固定**（RJ-B25。保存は UTC のまま、date 算出と from/to 境界のみ JST 変換。多人数対応が必要になったら tz パラメータ化に進化）
 
 ## Consequences
 
